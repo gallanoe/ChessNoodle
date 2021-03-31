@@ -77,8 +77,9 @@ enum Rank : uint64_t {
 typedef struct Bitboard {
     uint64_t bb;
 
-    Bitboard() : bb(0) {};
-    Bitboard(uint64_t bb) : bb(bb) {};
+    Bitboard() : bb(0) {}
+    Bitboard(uint32_t s) { set_bit(s); }
+    Bitboard(uint64_t bb) : bb(bb) {}
 
     void set_bit(uint32_t s) {
         bb |= (1ULL << s);
@@ -123,42 +124,93 @@ typedef struct Bitboard {
 
 const size_t NDIRS = 8;
 enum Direction : int {
-    NORTH_RHS = 8, EAST_RHS = 1, WEST_LHS = 1, SOUTH_LHS = 8,
-    NORTHEAST_RHS = 9, SOUTHEAST_LHS = 7, SOUTHWEST_LHS= 9, NORTHWEST_RHS = 7
+    NORTH_RHS = 8, EAST_LHS = 1, WEST_RHS = 1, SOUTH_LHS = 8,
+    NORTHEAST_RHS = 7, SOUTHEAST_LHS = 9, SOUTHWEST_LHS= 7, NORTHWEST_RHS = 9,
+    NORTHWEST_VL_RHS = 17, NORTHEAST_VL_RHS = 15, NORHTWEST_HL_RHS = 10, NORTHEAST_HL_RHS = 6,
+    SOUTHWEST_VL_LHS = 15, SOUTHEAST_VL_RHS = 17, SOUTHWEST_HL_RHS = 6, SOUTHEAST_HL_RHS = 10
+    // WEST_21, EAST_21, WEST_12, EAST_12
 };
 
 /**** ATTACK TABLES ****/
 
-Bitboard PAWN_ATTACKS[NCOLORS][NSQUARES]; 
+Bitboard PAWN_ATTACK_TABLE[NCOLORS][NSQUARES]; 
 Bitboard mask_pawn_attacks(uint8_t c, uint32_t s) {
     Bitboard piece_bb, attack_bb;
     piece_bb.set_bit(s);        
-    if (c == Color::WHITE) {
-        if ((piece_bb.bb >> Direction::NORTHWEST_RHS) & (~File::FILE_A)) 
-            attack_bb.bb |= (piece_bb.bb >> Direction::NORTHWEST_RHS);
-        if ((piece_bb.bb >> Direction::NORTHEAST_RHS) & (~File::FILE_H))
-            attack_bb.bb |= (piece_bb.bb >> Direction::NORTHEAST_RHS);
-    } else {
-        if ((piece_bb.bb << Direction::SOUTHWEST_LHS) & (~File::FILE_A))
-            attack_bb.bb |= (piece_bb.bb << Direction::SOUTHWEST_LHS);
-        if ((piece_bb.bb << Direction::SOUTHEAST_LHS) & (~File::FILE_H))
-            attack_bb.bb |= (piece_bb.bb << Direction::SOUTHEAST_LHS);
+    if (piece_bb.bb & ~File::FILE_A) 
+        attack_bb.bb |= (!c) ? piece_bb.bb >> Direction::NORTHWEST_RHS : piece_bb.bb << Direction::SOUTHWEST_LHS;
+    if (piece_bb.bb & ~File::FILE_H) 
+        attack_bb.bb |= (!c) ? piece_bb.bb >> Direction::NORTHEAST_RHS : piece_bb.bb << Direction::SOUTHEAST_LHS;
+    return attack_bb;
+}
+void initialize_pawn_attack_table() { 
+    // Pawns
+    for (int c = 0; c < NCOLORS; c++) {
+        for (int s = 0; s < NSQUARES; s++) {
+            PAWN_ATTACK_TABLE[c][s] = mask_pawn_attacks(c, s);
+        }
+    }
+}
+
+Bitboard KNIGHT_ATTACK_TABLE[NSQUARES];
+Bitboard mask_knight_attacks(uint32_t s) {
+    Bitboard piece_bb, attack_bb;
+    piece_bb.set_bit(s);
+    if (piece_bb.bb & ~File::FILE_A) {
+        attack_bb.bb |= piece_bb.bb >> Direction::NORTHWEST_VL_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHWEST_VL_LHS;
+    }
+    if (piece_bb.bb & ~(File::FILE_A | File::FILE_B)) {
+        attack_bb.bb |= piece_bb.bb >> Direction::NORHTWEST_HL_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHWEST_HL_RHS;
+    }
+    if (piece_bb.bb & ~File::FILE_H) {
+        attack_bb.bb |= piece_bb.bb >> Direction::NORTHEAST_VL_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHEAST_VL_RHS;
+    }
+    if (piece_bb.bb & ~(File::FILE_H | File::FILE_G)) {
+        attack_bb.bb |= piece_bb.bb >> Direction::NORTHEAST_HL_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHEAST_HL_RHS;
     }
     return attack_bb;
 }
-void initialize_pawn_attacks() {
-    // Initialize white pawn attacks, starting from rank 2
-    for (uint32_t s = Square::A2; s <= Square::H8; s++)
-        PAWN_ATTACKS[Color::WHITE][s] = mask_pawn_attacks(Color::WHITE, s);
-
-    // Initialize black pawn attacks, ending at rank 7
-    for (uint32_t s = Square::A1; s <= Square::H7; s++) 
-        PAWN_ATTACKS[Color::BLACK][s] = mask_pawn_attacks(Color::BLACK, s);
+void initialize_knight_attack_table() {
+    for (int s = 0; s < NSQUARES; s++) 
+        KNIGHT_ATTACK_TABLE[s] = mask_knight_attacks(s);
 }
 
+Bitboard KING_ATTACK_TABLE[NSQUARES];
+Bitboard mask_king_attacks(uint32_t s) {
+    Bitboard piece_bb, attack_bb;
+    piece_bb.set_bit(s);
+    attack_bb.bb |= piece_bb.bb >> Direction::NORTH_RHS;
+    attack_bb.bb |= piece_bb.bb << Direction::SOUTH_LHS;
+    if (piece_bb.bb & ~File::FILE_A) {
+        attack_bb.bb |= piece_bb.bb >> Direction::WEST_RHS;
+        attack_bb.bb |= piece_bb.bb >> Direction::NORTHWEST_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHWEST_LHS;
+    }
+    if (piece_bb.bb & ~File::FILE_H) {
+        attack_bb.bb |= piece_bb.bb << Direction::EAST_LHS;
+        attack_bb.bb |= piece_bb.bb >> Direction::NORTHEAST_RHS;
+        attack_bb.bb |= piece_bb.bb << Direction::SOUTHEAST_LHS;
+    }
+    return attack_bb;
+}
+void initialize_king_attack_table() {
+    for (int s = 0; s < NSQUARES; s++) 
+        KING_ATTACK_TABLE[s] = mask_king_attacks(s);
+}
+
+void initialize_attack_tables() {
+    initialize_pawn_attack_table();
+    initialize_knight_attack_table();
+    initialize_king_attack_table();
+}
 
 int main() {
-    Bitboard pawn_attacks = mask_pawn_attacks(Color::BLACK, Square::H4);
-    pawn_attacks.print();
+    initialize_attack_tables();
+    for (int s = 0; s < NSQUARES; s++) 
+        KING_ATTACK_TABLE[s].print();
     return 0;
 }

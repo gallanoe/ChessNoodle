@@ -155,17 +155,17 @@ void PrintBitboard(U64 bb) {
 typedef struct State { U64 a; U64 b; U64 c; U64 d; } State;
 State kRandomContext;
 constexpr U64 RandomRotate(U64 a, U64 b) { return (a << b) | (a >> (64 - b)); }
-U64 RandomValue(State &x) {
-    U64 e = x.a - RandomRotate(x.b, 7);
-    x.a = x.b ^ RandomRotate(x.c, 13);
-    x.b = x.c + RandomRotate(x.d, 37);
-    x.c = x.d + e;
-    x.d = e + x.a;
-    return x.d;
+U64 RandomValue() {
+    U64 e = kRandomContext.a - RandomRotate(kRandomContext.b, 7);
+    kRandomContext.a = kRandomContext.b ^ RandomRotate(kRandomContext.c, 13);
+    kRandomContext.b = kRandomContext.c + RandomRotate(kRandomContext.d, 37);
+    kRandomContext.c = kRandomContext.d + e;
+    kRandomContext.d = e + kRandomContext.a;
+    return kRandomContext.d;
 }
-void RandomInit(State &x, U64 seed) {
-    x.a = 0xf1ea5eed, x.b = x.c = x.d = seed;
-    for (int i = 0; i < 20; i++) RandomValue(x);
+void InitPRNG(U64 seed) {
+    kRandomContext.a = 0xf1ea5eed, kRandomContext.b = kRandomContext.c = kRandomContext.d = seed;
+    for (int i = 0; i < 20; i++) RandomValue();
 }
 
 /**** DIRECTIONS ****/
@@ -192,7 +192,7 @@ U64 MaskPawnAttacks(Color c, Square s) {
         attack |= (!c) ? ShiftDirection(piece, Direction::kNortheast) : ShiftDirection(piece, Direction::kSoutheast);
     return attack;
 }
-void InitializePawnAttackTable() { 
+void InitPawnAttackTable() { 
     for (U8 c = 0; c < kNumColors; c++) {
         for (U8 s = 0; s < kNumSquares; s++) {
             kPawnAttackTable[c][s] = MaskPawnAttacks((Color)c, (Square)s);
@@ -213,7 +213,7 @@ U64 MaskKnightAttacks(Square s) {
         attack |= (ShiftDirection(piece, Direction::kNortheastHL) | ShiftDirection(piece, Direction::kSoutheastHL));
     return attack;
 }
-void InitializeKnightAttackTable() {
+void InitKnightAttackTable() {
     for (int s = 0; s < kNumSquares; s++) 
         kKnightAttackTable[s] = MaskKnightAttacks((Square)s);
 }
@@ -233,7 +233,7 @@ U64 MaskKingAttacks(Square s) {
                 | ShiftDirection(piece, Direction::kSoutheast);
     return attack;
 }
-void InitializeKingAttackTable() {
+void InitKingAttackTable() {
     for (int s = 0; s < kNumSquares; s++) 
         kKingAttackTable[s] = MaskKingAttacks((Square)s);
 }
@@ -330,22 +330,14 @@ U64 SetOccupancy(U32 index, U64 attack_mask) {
     return occupancy;
 }
 
-void InitializeAttackTables() {
-    InitializePawnAttackTable();
-    InitializeKnightAttackTable();
-    InitializeKingAttackTable();
+void InitAttackTables() {
+    InitPawnAttackTable();
+    InitKnightAttackTable();
+    InitKingAttackTable();
 }
 
 int main() {
+    InitAttackTables();
+    InitPRNG(146262352ULL);
 
-    InitializeAttackTables();
-
-    for (int r = 0; r < 8; r++) {
-        for (int f = 0; f < 8; f++) {
-            Square s = (Square)(r * 8 + f);
-            std::cout << CountBit(MaskStraightAttacks(s)) << ", ";
-        }
-        std::cout << '\n';
-    }
-    return 0;
 }

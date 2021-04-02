@@ -8,7 +8,7 @@ typedef uint8_t U8;
 
 /**** COLORS ****/
 
-#define NUM_COLORS 2 
+const U32 kNumColors = 2; 
 enum Color : I32 {
     kWhite, kBlack
 };
@@ -16,14 +16,14 @@ constexpr Color operator~(Color c) { return Color(c ^ kBlack); }
 
 /**** PIECE TYPES ****/ 
 
-#define NUM_TYPES 5
+const U32 kNumTypes = 5;
 enum Type : I32 {
     kPawn, kKnight, kKing, kStraight, kDiagonal
 };
 
 /**** SQUARES ****/
 
-#define NUM_SQUARES 64
+const U32 kNumSquares = 64;
 enum Square : I32 {
     kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
     kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
@@ -48,31 +48,31 @@ const char* kSquareNames[] = {
 
 /**** FILES ****/
 
-#define NUM_FILES 8
+const U32 kNumFiles = 8;
 enum File : I32 { 
-    kFileA, kFileB, kFile, kFileD,
-    kFileE, kFileF, kFileG, kFileH
+    kA, kB, kC, kD,
+    kE, kF, kG, kH
 };
 constexpr U64 GetMask(File f) { return 0x0101010101010101ULL << f; }
 constexpr File GetFile(Square s) { return (File)(s % 8); }
 
 /**** RANKS ****/
 
-#define NUM_RANKS 8
+const U32 kNumRanks = 8;
 enum Rank : I32 {
-    kRank1, kRank2, kRank3, kRank4,
-    kRank5, kRank6, kRank7, kRank8
+    k1, k2, k3, k4,
+    k5, k6, k7, k8
 }; 
 constexpr U64 GetMask(Rank r) { return 0xffULL << (7 - r) * 8; }
-constexpr Rank GetRank(Square s) { return (Rank)(8 - (s / 8) + 1); }
+constexpr Rank GetRank(Square s) { return (Rank)(8 - (s / 8 + 1)); }
 
 /**** DIAGONALS ****/
 
-#define NUM_DIAGONALS 15
+const U32 kNumDiagonals = 15;
 enum Diagonal : I32 {
-    kDiagonal0, kDiagonal1, kDiagonal2, kDiagonal3, kDiagonal4, 
-    kDiagonal5, kDiagonal6, kDiagonal7, kDiagonal8, kDiagonal9,
-    kDiagonal10, kDiagonal11, kDiagonal12, kDiagonal13, kDiagonal14,
+    kDiag0, kDiag1, kDiag2, kDiag3, kDiag4, 
+    kDiag5, kDiag6, kDiag7, kDiag8, kDiag9,
+    kDiag10, kDiag11, kDiag12, kDiag13, kDiag14,
 };
 constexpr U64 GetMask(Diagonal d) { 
     U64 masks[] = { 0x8000000000000000, 0x4080000000000000,
@@ -88,11 +88,11 @@ constexpr Diagonal GetDiagonal(Square s) { return (Diagonal)(7 + GetRank(s) - Ge
 
 /**** ANTIDIAGONAL-DIAGONALS ****/
 
-#define NUM_ANTIDIAGONALS 15
+const U32 kNAntidiagonals = 15;
 enum Antidiagonal : I32 {
-    kAntidiagonal0, kAntidiagonal1, kAntidiagonal2, kAntidiagonal3, kAntidiagonal4,
-    kAntidiagonal5, kAntidiagonal6, kAntidiagonal7, kAntidiagonal8, kAntidiagonal9,
-    kAntidiagonal10, kAntidiagonal11, kAntidiagonal12, kAntidiagonal13, kAntidiagonal14
+    kAnti0, kAnti1, kAnti2, kAnti3, kAnti4,
+    kAnti5, kAnti6, kAnti7, kAnti8, kAnti9,
+    kAnti10, kAnti11, kAnti12, kAnti13, kAnti14
 };
 constexpr U64 GetMask(Antidiagonal a) {
     U64 masks[] = { 0x100000000000000, 0x201000000000000,
@@ -134,11 +134,11 @@ constexpr U32 CountBit(U64 x) {
     return (U32)x;
 }
 constexpr I32 ForwardScanBit(U64 x) { return (!x) ? 0 : CountBit((x & -x) - 1); }
-void print_bitboard(U64 bb) {
+void PrintBitboard(U64 bb) {
     std::cout << '\n';
-    for (int r = 0; r < 8; r++) {
-        for (int f = 0; f < 8; f++) {
-            Square s = r * 8 + f;
+    for (I32 r = 0; r < 8; r++) {
+        for (I32 f = 0; f < 8; f++) {
+            Square s = (Square)(r * 8 + f);
             if (!f) 
                 std::cout << "  " << 8 - r << ' ';
             std::cout << ' ' << (GetBit(bb, s)) ? 1 : 0;
@@ -151,8 +151,8 @@ void print_bitboard(U64 bb) {
 
 /**** DIRECTIONS ****/
 
-#define NDIRS 8
-enum Direction : I8 {
+const U32 kNDirections = 16;
+enum Direction : I32 {
     kNorth = 8, kEast = -1, kWest = 1, kSouth = -8,
     kNortheast = 7, kSoutheast = -9, kSouthwest= -7, kNorthwest = 9,
     kNorthwestVL = 17, kNortheastVL = 15, kNorthwestHL = 10, kNortheastHL = 6,
@@ -164,73 +164,81 @@ constexpr U64 ShiftDirection(U64 bb, Direction d) {
 
 /**** ATTACK TABLES ****/
 
-U64 PAWN_ATTACK_TABLE[NUM_COLORS][NUM_SQUARES]; 
+U64 kPawnAttackTable[kNumColors][kNumSquares]; 
 U64 MaskPawnAttacks(Color c, Square s) {
     U64 attack = 0ULL, piece = GetMask(s);
-    if (piece & ~File::kFileA) 
+    if (piece & ~File::kA) 
         attack |= (!c) ? ShiftDirection(piece, Direction::kNorthwest) : ShiftDirection(piece, Direction::kSouthwest);
-    if (piece & ~File::kFileH) 
+    if (piece & ~File::kH) 
         attack |= (!c) ? ShiftDirection(piece, Direction::kNortheast) : ShiftDirection(piece, Direction::kSoutheast);
     return attack;
 }
 void InitializePawnAttackTable() { 
-    for (U8 c = 0; c < NUM_COLORS; c++) {
-        for (U8 s = 0; s < NUM_SQUARES; s++) {
-            PAWN_ATTACK_TABLE[c][s] = MaskPawnAttacks(s, c);
+    for (U8 c = 0; c < kNumColors; c++) {
+        for (U8 s = 0; s < kNumSquares; s++) {
+            kPawnAttackTable[c][s] = MaskPawnAttacks((Color)c, (Square)s);
         }
     }
 }
 
-U64 KNIGHT_ATTACK_TABLE[NUM_SQUARES];
+U64 kKnightAttackTable[kNumSquares];
 U64 MaskKnightAttacks(Square s) {
     U64 piece = GetMask(s), attack = 0ULL;
-    if (piece & ~GetMask(File::kFileA))
+    if (piece & ~GetMask(File::kA))
         attack |= (ShiftDirection(piece, Direction::kNorthwestVL) | ShiftDirection(piece, Direction::kSouthwestVL));
-    if (piece & ~(GetMask(File::kFileA) | GetMask(File::kFileB)))
+    if (piece & ~(GetMask(File::kA) | GetMask(File::kB)))
         attack |= (ShiftDirection(piece, Direction::kNorthwestHL) | ShiftDirection(piece, Direction::kSouthwestHL));
-    if (piece & ~GetMask(File::kFileH)) 
+    if (piece & ~GetMask(File::kH)) 
         attack |= (ShiftDirection(piece, Direction::kNortheastVL) | ShiftDirection(piece, Direction::kSoutheastVL));
-    if (piece & ~(GetMask(File::kFileH) | GetMask(File::kFileG)))
+    if (piece & ~(GetMask(File::kH) | GetMask(File::kG)))
         attack |= (ShiftDirection(piece, Direction::kNortheastHL) | ShiftDirection(piece, Direction::kSoutheastHL));
     return attack;
 }
 void InitializeKnightAttackTable() {
-    for (int s = 0; s < NUM_SQUARES; s++) 
-        KNIGHT_ATTACK_TABLE[s] = MaskKnightAttacks((Square)s);
+    for (int s = 0; s < kNumSquares; s++) 
+        kKnightAttackTable[s] = MaskKnightAttacks((Square)s);
 }
 
-U64 KING_ATTACK_TABLE[NUM_SQUARES];
+U64 kKingAttackTable[kNumSquares];
 U64 MaskKingAttacks(Square s) {
     U64 piece = GetMask(s), attack = 0ULL;
     attack |= ShiftDirection(piece, Direction::kNorth);
     attack |= ShiftDirection(piece, Direction::kSouth);
-    if (piece & ~GetMask(File::kFileA))
+    if (piece & ~GetMask(File::kA))
         attack |= ShiftDirection(piece, Direction::kWest) 
                 | ShiftDirection(piece, Direction::kNorthwest) 
                 | ShiftDirection(piece, Direction::kSouthwest);
-    if (piece & ~GetMask(File::kFileH))
+    if (piece & ~GetMask(File::kH))
         attack |= ShiftDirection(piece, Direction::kEast) 
                 | ShiftDirection(piece, Direction::kNortheast) 
                 | ShiftDirection(piece, Direction::kSoutheast);
     return attack;
 }
 void InitializeKingAttackTable() {
-    for (int s = 0; s < NUM_SQUARES; s++) 
-        KING_ATTACK_TABLE[s] = MaskKingAttacks((Square)s);
+    for (int s = 0; s < kNumSquares; s++) 
+        kKingAttackTable[s] = MaskKingAttacks((Square)s);
 }
 
-
+const I32 kDiagonalRelevantBits[64] = {
+    6, 5, 5, 5, 5, 5, 5, 6, 
+    5, 5, 5, 5, 5, 5, 5, 5, 
+    5, 5, 7, 7, 7, 7, 5, 5, 
+    5, 5, 7, 9, 9, 7, 5, 5, 
+    5, 5, 7, 9, 9, 7, 5, 5, 
+    5, 5, 7, 7, 7, 7, 5, 5, 
+    5, 5, 5, 5, 5, 5, 5, 5, 
+    6, 5, 5, 5, 5, 5, 5, 6
+};
 U64 MaskDiagonalAttacks(Square s) {
     U64 attack = 0ULL;
-    U64 edges = GetMask(File::kFileA) | GetMask(File::kFileH)
-              | GetMask(Rank::kRank1) | GetMask(Rank::kRank8);
+    U64 edges = GetMask(File::kA) | GetMask(File::kH) | GetMask(Rank::k1) | GetMask(Rank::k8);
     attack |= (GetMask(GetDiagonal(s)) | GetMask(GetAntidiagonal(s))) & ~(edges | GetMask(s));
     return attack;
 }
 U64 GenerateDiagonalAttacks(Square s, U64 occupied) {
     U64 attack;
-    int tr = s / 8, tf = s % 8;
-    int r, f;
+    I32 tr = s / 8, tf = s % 8;
+    I32 r, f;
     for (r = tr + 1, f = tf + 1; r <= 7 && f <= 7; r++, f++) {
         attack |= (1ULL << (r * 8 + f));
         if (1ULL << (r * 8 + f) & occupied) break;
@@ -250,18 +258,27 @@ U64 GenerateDiagonalAttacks(Square s, U64 occupied) {
     return attack;
 }
 
-
+const I32 kStraightRelevantBits[64] = {
+    12, 11, 11, 11, 11, 11, 11, 12, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    12, 11, 11, 11, 11, 11, 11, 12, 
+};
 U64 MaskStraightAttacks(Square s) {
     U64 attack = 0ULL;
-    attack |= GetMask(GetRank(s)) & ~(GetMask(File::kFileA) | GetMask(File::kFileH));
-    attack |= GetMask(GetFile(s)) & ~(GetMask(Rank::kRank1) | GetMask(Rank::kRank8));
+    attack |= GetMask(GetRank(s)) & ~(GetMask(File::kA) | GetMask(File::kH));
+    attack |= GetMask(GetFile(s)) & ~(GetMask(Rank::k1) | GetMask(Rank::k8));
     attack &= ~GetMask(s);
     return attack;
 } 
 U64 GenerateStraightAttacks(Square s, U64 occupied) {
     U64 attack;
-    int tr = s / 8, tf = s % 8;
-    int r, f;
+    I32 tr = s / 8, tf = s % 8;
+    I32 r, f;
     for (r = tr + 1; r <= 7; r++) {
         attack |= (1ULL << (r * 8 + tf));
         if ((1ULL << (r * 8 + tf)) & occupied) break;
@@ -281,8 +298,16 @@ U64 GenerateStraightAttacks(Square s, U64 occupied) {
     return attack;
 }
 
-U64 SetOccupancy(U32 index, U32 count, U64 attack_mask) {
+
+U64 SetOccupancy(U32 index, U64 attack_mask) {
     U64 occupancy = 0ULL;
+    I32 mask_count = CountBit(attack_mask);
+    for (I32 c = 0; c < mask_count; c++) {
+        Square s = (Square)ForwardScanBit(attack_mask);
+        attack_mask = PopBit(attack_mask, s);
+        if (index & (1 << c)) 
+            occupancy |= (1ULL << s);
+    }
     return occupancy;
 }
 
@@ -293,21 +318,15 @@ void InitializeAttackTables() {
 }
 
 int main() {
-    // initialize_attack_tables();
 
-    // Bitboard board;
-    // for (int i=0; i<8; i++) {
-        // for (int j=0; j<8; j++) {
-            // int s = i * 8 + j;
-            // board = mask_diagonal_attacks(s);
-            // board.print();
-        // }
-    // }
+    InitializeAttackTables();
 
-    // U64 board = GetMask(File::kFileF) | GetMask(Rank::kRank3);
-    U64 board = GetMask(Square::kD4) | GetMask(Square::kB2);
-    print_bitboard(board);
-    std::cout << "Count: " << CountBit(board) << '\n';
-    std::cout << "Least significant bit: " << kSquareNames[ForwardScanBit(board)] << '\n';
+    for (int r = 0; r < 8; r++) {
+        for (int f = 0; f < 8; f++) {
+            Square s = (Square)(r * 8 + f);
+            std::cout << CountBit(MaskStraightAttacks(s)) << ", ";
+        }
+        std::cout << '\n';
+    }
     return 0;
 }

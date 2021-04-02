@@ -12,7 +12,7 @@ const U32 kNumColors = 2;
 enum Color : I32 {
     kWhite, kBlack
 };
-constexpr Color operator~(Color c) { return Color(c ^ kBlack); }
+constexpr Color operator~(Color c) { return Color(c ^ Color::kBlack); }
 
 /**** PIECE TYPES ****/ 
 
@@ -121,6 +121,7 @@ constexpr Antidiagonal GetAntidiagonal(Square s) { return (Antidiagonal)(GetRank
 
      a b c d e f g h
 **/
+
 constexpr bool GetBit(U64 bb, Square s) { return bb & GetMask(s); }
 constexpr U64 SetBit(U64 bb, Square s) { return bb | GetMask(s); }
 constexpr U64 PopBit(U64 bb, Square s) { return bb & ~GetMask(s); }
@@ -147,6 +148,24 @@ void PrintBitboard(U64 bb) {
     }
     std::cout << "\n     a b c d e f g h\n";
     std::cout << "\nBitboard: " << bb << '\n';
+}
+
+/**** PSEUDO-RANDOM NUMBER GENERATION ****/
+
+typedef struct State { U64 a; U64 b; U64 c; U64 d; } State;
+State kRandomContext;
+constexpr U64 RandomRotate(U64 a, U64 b) { return (a << b) | (a >> (64 - b)); }
+U64 RandomValue(State &x) {
+    U64 e = x.a - RandomRotate(x.b, 7);
+    x.a = x.b ^ RandomRotate(x.c, 13);
+    x.b = x.c + RandomRotate(x.d, 37);
+    x.c = x.d + e;
+    x.d = e + x.a;
+    return x.d;
+}
+void RandomInit(State &x, U64 seed) {
+    x.a = 0xf1ea5eed, x.b = x.c = x.d = seed;
+    for (int i = 0; i < 20; i++) RandomValue(x);
 }
 
 /**** DIRECTIONS ****/
